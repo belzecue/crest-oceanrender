@@ -20,6 +20,7 @@ const uint _LD_SliceIndex;
 Texture2DArray _LD_TexArray_AnimatedWaves;
 Texture2DArray _LD_TexArray_WaveBuffer;
 Texture2DArray _LD_TexArray_SeaFloorDepth;
+Texture2DArray _LD_TexArray_ClipSurface;
 Texture2DArray _LD_TexArray_Foam;
 Texture2DArray _LD_TexArray_Flow;
 Texture2DArray _LD_TexArray_DynamicWaves;
@@ -34,6 +35,7 @@ const float3 _LD_Pos_Scale[MAX_LOD_COUNT + 1];
 Texture2DArray _LD_TexArray_AnimatedWaves_Source;
 Texture2DArray _LD_TexArray_WaveBuffer_Source;
 Texture2DArray _LD_TexArray_SeaFloorDepth_Source;
+Texture2DArray _LD_TexArray_ClipSurface_Source;
 Texture2DArray _LD_TexArray_Foam_Source;
 Texture2DArray _LD_TexArray_Flow_Source;
 Texture2DArray _LD_TexArray_DynamicWaves_Source;
@@ -141,6 +143,11 @@ void SampleSeaDepth(in Texture2DArray i_oceanDepthSampler, in float3 i_uv_slice,
 	io_oceanDepth += i_wt * (i_oceanDepthSampler.SampleLevel(LODData_linear_clamp_sampler, i_uv_slice, 0.0).x - CREST_OCEAN_DEPTH_BASELINE);
 }
 
+void SampleClip(in Texture2DArray i_oceanClipSurfaceSampler, in float3 i_uv_slice, in float i_wt, inout half io_clipValue)
+{
+	io_clipValue += i_wt * (i_oceanClipSurfaceSampler.SampleLevel(LODData_linear_clamp_sampler, i_uv_slice, 0.0).x);
+}
+
 void SampleShadow(in Texture2DArray i_oceanShadowSampler, in float3 i_uv_slice, in float i_wt, inout half2 io_shadow)
 {
 	io_shadow += i_wt * i_oceanShadowSampler.SampleLevel(LODData_linear_clamp_sampler, i_uv_slice, 0.0).xy;
@@ -153,15 +160,16 @@ void SampleShadow(in Texture2DArray i_oceanShadowSampler, in float3 i_uv_slice, 
 // x: Grid size of lod data - size of lod data texel in world space.
 // y: Grid size of geometry - distance between verts in mesh.
 // zw: normalScrollSpeed0, normalScrollSpeed1
-uniform float4 _GeomData;
-uniform float3 _OceanCenterPosWorld;
+float4 _GeomData;
+float3 _OceanCenterPosWorld;
+float _SliceCount;
 
-void PosToSliceIndices(const float2 worldXZ, const float sliceCount, const float meshScaleLerp, const float minSlice, out uint slice0, out uint slice1, out float lodAlpha)
+void PosToSliceIndices(const float2 worldXZ, const float meshScaleLerp, const float minSlice, out uint slice0, out uint slice1, out float lodAlpha)
 {
 	const float2 offsetFromCenter = abs(worldXZ - _OceanCenterPosWorld.xz);
 	const float taxicab = max(offsetFromCenter.x, offsetFromCenter.y);
-	const float radius0 = _LD_Pos_Scale[0].z / 2.0;
-	const float sliceNumber = clamp(log2(taxicab / radius0), minSlice, sliceCount - 1.0);
+	const float radius0 = _LD_Pos_Scale[0].z;
+	const float sliceNumber = clamp(log2(taxicab / radius0), minSlice, _SliceCount - 1.0);
 
 	lodAlpha = frac(sliceNumber);
 	slice0 = (uint)sliceNumber;
