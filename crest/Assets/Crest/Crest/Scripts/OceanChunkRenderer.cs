@@ -58,31 +58,6 @@ namespace Crest
             _mesh.bounds = newBounds;
         }
 
-        private void OnEnable()
-        {
-#if UNITY_2018
-            DeregisterBeginCameraRenderingEvent();
-            RenderPipeline.beginCameraRendering += BeginCameraRendering;
-#else
-            DeregisterBeginCameraRenderingEvent();
-            RenderPipelineManager.beginCameraRendering += BeginCameraRendering;
-#endif
-        }
-
-        private void OnDisable()
-        {
-            DeregisterBeginCameraRenderingEvent();
-        }
-
-        private static void DeregisterBeginCameraRenderingEvent()
-        {
-#if UNITY_2018
-            RenderPipeline.beginCameraRendering -= BeginCameraRendering;
-#else
-            RenderPipelineManager.beginCameraRendering -= BeginCameraRendering;
-#endif
-        }
-
         static Camera _currentCamera = null;
 
 #if UNITY_2018
@@ -152,8 +127,8 @@ namespace Crest
             ldaws.BindResultData(_mpb);
             if (ldflow) ldflow.BindResultData(_mpb);
             if (ldfoam) ldfoam.BindResultData(_mpb); else LodDataMgrFoam.BindNull(_mpb);
-            if (ldsds) ldsds.BindResultData(_mpb);
-            if (ldclip) ldclip.BindResultData(_mpb);
+            if (ldsds) ldsds.BindResultData(_mpb); else LodDataMgrSeaFloorDepth.BindNull(_mpb);
+            if (ldclip) ldclip.BindResultData(_mpb); else LodDataMgrClipSurface.BindNull(_mpb);
             if (ldshadows) ldshadows.BindResultData(_mpb); else LodDataMgrShadow.BindNull(_mpb);
 
             var reflTex = PreparedReflections.GetRenderTexture(_currentCamera.GetHashCode());
@@ -214,7 +189,13 @@ namespace Crest
         [RuntimeInitializeOnLoadMethod]
         static void RunOnStart()
         {
-            DeregisterBeginCameraRenderingEvent();
+#if UNITY_2018
+            RenderPipeline.beginCameraRendering -= BeginCameraRendering;
+            RenderPipeline.beginCameraRendering += BeginCameraRendering;
+#else
+            RenderPipelineManager.beginCameraRendering -= BeginCameraRendering;
+            RenderPipelineManager.beginCameraRendering += BeginCameraRendering;
+#endif
         }
     }
 
